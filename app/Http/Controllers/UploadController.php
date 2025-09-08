@@ -3,62 +3,62 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Photo;
+use Illuminate\Support\Facades\Storage;
 
 class UploadController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        //
+        $photos = Photo::latest()->get();
+        return view('upload.index', compact('photos'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         return view('upload.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        
+        $request->validate([
+            'photo' => 'required|image|mimes:jpg,jpeg,png,gif|max:2048',
+        ]);
+
+        $path = $request->file('photo')->store('uploads', 'public');
+
+        Photo::create(['filename' => $path]);
+
+        return redirect()->route('upload.index')->with('success', 'Photo uploaded successfully!');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function edit(Photo $upload)
     {
-        //
+        return view('upload.edit', compact('upload'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function update(Request $request, Photo $upload)
     {
-        //
+        $request->validate([
+            'photo' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+        ]);
+
+        if ($request->hasFile('photo')) {
+            // delete old file
+            Storage::disk('public')->delete($upload->filename);
+
+            $path = $request->file('photo')->store('uploads', 'public');
+            $upload->update(['filename' => $path]);
+        }
+
+        return redirect()->route('upload.index')->with('success', 'Photo updated successfully!');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function destroy(Photo $upload)
     {
-        //
-    }
+        Storage::disk('public')->delete($upload->filename);
+        $upload->delete();
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return redirect()->route('upload.index')->with('success', 'Photo deleted successfully!');
     }
 }
